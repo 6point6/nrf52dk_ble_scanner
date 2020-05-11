@@ -1,4 +1,4 @@
+#include "BLE.h"
 
-#include <string> // for string class
-
-std::string convertDigitalReadToString(int status);
+void periodicCallback(void);
+void advertisementCallback(const Gap::AdvertisementCallbackParams_t *params);
