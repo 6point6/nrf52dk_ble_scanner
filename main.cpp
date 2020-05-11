@@ -7,7 +7,7 @@
 #include <events/mbed_events.h>
 #include <mbed.h>
 #include "ble/BLE.h"
-#include "pretty_printer.h"
+//#include "pretty_printer.h"
 
 //#include "gap/Gap.h"
 //#include "gap/AdvertisingDataParser.h"
@@ -25,7 +25,7 @@
 #define PC_SERIAL_BAUD 115200               // Serial baud rate
 
 static const int URI_MAX_LENGTH = 18;       // Maximum size of service data in ADV packets
- 
+
 using namespace std;
 
 // Global Objects
@@ -39,7 +39,7 @@ void periodicCallback(void)
     _led1 = !_led1;
 
     // print LED state
-    _pc_serial.printf("Blink! LED is now %s.\r\n", convertDigitalReadToString(_led1.read()).c_str());
+    //_pc_serial.printf("Blink! LED is now %s.\r\n", convertDigitalReadToString(_led1.read()).c_str());
 }
 
 /*
@@ -47,27 +47,13 @@ void periodicCallback(void)
  */
 void advertisementCallback(const Gap::AdvertisementCallbackParams_t *params)
 {
-    struct AdvertisingData_t {
-        uint8_t                        length; /* doesn't include itself */
-        GapAdvertisingData::DataType_t dataType;
-        uint8_t                        data[1];
-    } AdvDataPacket;
- 
-    struct ApplicationData_t {
-        uint8_t applicationSpecificId[2];
-        uint8_t frameType;
-        uint8_t advPowerLevels;
-        uint8_t uriData[URI_MAX_LENGTH];
-    } AppDataPacket;
- 
-    const uint8_t BEACON_UUID[sizeof(UUID::ShortUUIDBytes_t)] = {0xAA, 0xFE};
-    const uint8_t FRAME_TYPE_URL                              = 0x10;
-    const uint8_t APPLICATION_DATA_OFFSET                     = sizeof(ApplicationData_t) + sizeof(AdvDataPacket.dataType) - sizeof(AppDataPacket.uriData);
- 
-    AdvertisingData_t *pAdvData;
-    size_t index = 0;
-    
-    _pc_serial.printf("Advertising data collected.\r\n");
+    _pc_serial.printf("Advertising data collected:\r\n");
+
+    _pc_serial.printf("Address: %02x:%02x:%02x:%02x:%02x:%02x\t",
+           params->peerAddr[5], params->peerAddr[4], params->peerAddr[3], params->peerAddr[2], params->peerAddr[1], params->peerAddr[0]);
+
+    _pc_serial.printf("Data length: %d\t", params->advertisingDataLen);
+    _pc_serial.printf("RSSI: %ddBm\r\n", params->rssi);
 }
 
 /*
@@ -94,9 +80,10 @@ void bleInitComplete(BLE::InitializationCompleteCallbackContext *params)
     if (ble.getInstanceID() != BLE::DEFAULT_INSTANCE) {
         return;
     }
- 
+    
+
     // TODO replace with new version
-    ble.gap().setScanParams(1800 /* scan interval */, 1500 /* scan window */);
+    ble.gap().setScanParams(1800 /* scan interval */, 1500 /* scan window */, true /* active scanning */);
     
     // TODO replace with new version
     ble.gap().startScan(advertisementCallback);
