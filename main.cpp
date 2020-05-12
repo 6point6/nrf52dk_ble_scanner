@@ -1,6 +1,7 @@
-/* mbed Microcontroller Library
- * Copyright (c) 2019 ARM Limited
- * SPDX-License-Identifier: Apache-2.0
+/*
+    Structure based on https://github.com/ARMmbed/mbed-os-example-ble/blob/master/BLE_LEDBlinker/source/main.cpp
+
+
  */
 
 // Platform Libs
@@ -10,18 +11,16 @@
 
 // C++ language libs
 #include <string> // for string class
-#include <cstdio>
-#include <map>
 
 // Local libs
 #include "string_helpers.h"
 
 // Constants
 #define BLINKING_RATE_MS        500               // Blinking rate in milliseconds
-#define PC_SERIAL_BAUD          115200               // Serial baud rate
-#define ACTIVE_SCANNING         true
-#define SCAN_INTERVAL           1800
-#define SCAN_WINDOW             1500
+#define PC_SERIAL_BAUD          115200            // Serial baud rate
+#define ACTIVE_SCANNING         true              // Active scanning sends scan requests
+#define SCAN_INTERVAL           1800              // Scan interval is the time it waits on a single channel
+#define SCAN_WINDOW             1500              // Scan window?
 
 
 // Global Objects
