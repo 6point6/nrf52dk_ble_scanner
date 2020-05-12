@@ -32,24 +32,35 @@ Serial _pc_serial(USBTX, USBRX);            // define the Serial object
  */
 class BLEScanner : ble::Gap::EventHandler {
 public:
+    // constructor
     BLEScanner(BLE &ble, events::EventQueue &event_queue) :
         _ble(ble),
         _event_queue(event_queue),
         _alive_led(LED1, 1) { }
 
+    // destructor
     ~BLEScanner() { }
 
-    void start() {
+    // scan method 
+    void scan() {
+        // sets the instance of the scanner class as the event handler
         _ble.gap().setEventHandler(this);
+
+        // Initialise the BLE stack, start scanning if successful
         _ble.init(this, &BLEScanner::on_init_complete);
 
+        // add the LED blinker as a recurring event on the event queue
         _event_queue.call_every(BLINKING_RATE_MS, this, &BLEScanner::blink);
+
+        // run infinitely
         _event_queue.dispatch_forever();
     }
 
 private:
     /** Callback triggered when the ble initialization process has finished */
     void on_init_complete(BLE::InitializationCompleteCallbackContext *params) {
+        
+        // report error or success
         if (params->error != BLE_ERROR_NONE) {
             _pc_serial.printf("Ble initialization failed.");
             return;
@@ -57,7 +68,7 @@ private:
 
         _pc_serial.printf("Ble initialization complete.");
 
-        // setup scan with constant values
+        // setup scan with custom parameters
         ble::ScanParameters scan_params;
         scan_params.set1mPhyConfiguration(ble::scan_interval_t(SCAN_INTERVAL), ble::scan_window_t(SCAN_WINDOW), ACTIVE_SCANNING);
         _ble.gap().setScanParameters(scan_params);
@@ -66,20 +77,27 @@ private:
         _ble.gap().startScan();
     }
 
+    // Blink the alive LED
     void blink() {
         _alive_led = !_alive_led;
     }
 
+// Private scanner class methods
 private:
-    /* Event handler */
+    // Called on receipt of an advertising report
     void onAdvertisingReport(const ble::AdvertisingReportEvent &event) {
         
+        // get the address and RSSI from the event
         ble::address_t address = event.getPeerAddress();
+        ble::rssi_t rssi = event.getRssi();
+        
+        //ble::AdvertisingDataParser adv_data(event.getPayload());
 
         _pc_serial.printf("Received advertising data from address %02x:%02x:%02x:%02x:%02x:%02x.\r\n",
             address[5], address[4], address[3], address[2], address[1], address[0]);
     }
 
+// private global scanner variables
 private:
     BLE &_ble;
     events::EventQueue &_event_queue;
@@ -97,15 +115,18 @@ int main()
     // setup serial connection
     _pc_serial.baud(PC_SERIAL_BAUD);
 
-    // Setup scanner instance
+    // create BLE instance
     BLE &ble = BLE::Instance();
+
+    // attach the callback to the event queue
     ble.onEventsToProcess(schedule_ble_events);
 
+    // Setup scanner instance
     BLEScanner scanner(ble, event_queue);
 
     // Run
     _pc_serial.printf("Setup done. Running.\r\n");
-    scanner.start();
+    scanner.scan();
  
     return 0;
 }
