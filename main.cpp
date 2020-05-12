@@ -17,76 +17,79 @@
 #include "string_helpers.h"
 
 // Constants
-#define BLINKING_RATE_MS 500               // Blinking rate in milliseconds
-#define PC_SERIAL_BAUD 115200               // Serial baud rate
+#define BLINKING_RATE_MS        500               // Blinking rate in milliseconds
+#define PC_SERIAL_BAUD          115200               // Serial baud rate
+#define ACTIVE_SCANNING         true
+#define SCAN_INTERVAL           1800
+#define SCAN_WINDOW             1500
 
-static const int URI_MAX_LENGTH = 18;       // Maximum size of service data in ADV packets
-
-using namespace std;
 
 // Global Objects
+static EventQueue event_queue(/* event count */ 16 * EVENTS_EVENT_SIZE);
 Serial _pc_serial(USBTX, USBRX);            // define the Serial object
-DigitalOut _led1(LED1);              // Initialise the digital pin LED1 as an output
-static EventQueue _eventQueue(/* event count */ 16 * EVENTS_EVENT_SIZE);
-
-
-/* Do blinky on LED1 while we're waiting for BLE events. Called every BLINKING_RATE_MS */
-void periodicCallback(void)
-{
-    _led1 = !_led1;
-}
-
 
 /*
- * This function is called every time we receive an advertisement.
+    Inner scanner class
  */
-void advertisementCallback(const Gap::AdvertisementCallbackParams_t *params)
-{
-    _pc_serial.printf("Address: %02x:%02x:%02x:%02x:%02x:%02x\t\r\n",
-           params->peerAddr[5], params->peerAddr[4], params->peerAddr[3], params->peerAddr[2], params->peerAddr[1], params->peerAddr[0]);
-}
+class BLEScanner : ble::Gap::EventHandler {
+public:
+    BLEScanner(BLE &ble, events::EventQueue &event_queue) :
+        _ble(ble),
+        _event_queue(event_queue),
+        _alive_led(LED1, 1) { }
 
-/*
-    TODO comment
-  */
-void onBleInitError(BLE& ble, ble_error_t error)
-{
-   _pc_serial.printf("Error intitialising BLE object:\r\n%u\r\n", error);
-}
+    ~BLEScanner() { }
 
-/*
-    TODO comment
-  */ 
-void bleInitComplete(BLE::InitializationCompleteCallbackContext *params)
-{
-    BLE&        ble   = params->ble;
-    ble_error_t error = params->error;
- 
-    if (error != BLE_ERROR_NONE) {
-        onBleInitError(ble, error);
-        return;
+    void start() {
+        _ble.gap().setEventHandler(this);
+        _ble.init(this, &BLEScanner::on_init_complete);
+
+        _event_queue.call_every(BLINKING_RATE_MS, this, &BLEScanner::blink);
+        _event_queue.dispatch_forever();
     }
- 
-    if (ble.getInstanceID() != BLE::DEFAULT_INSTANCE) {
-        return;
+
+private:
+    /** Callback triggered when the ble initialization process has finished */
+    void on_init_complete(BLE::InitializationCompleteCallbackContext *params) {
+        if (params->error != BLE_ERROR_NONE) {
+            _pc_serial.printf("Ble initialization failed.");
+            return;
+        }
+
+        _pc_serial.printf("Ble initialization complete.");
+
+        // setup scan with constant values
+        ble::ScanParameters scan_params;
+        scan_params.set1mPhyConfiguration(ble::scan_interval_t(SCAN_INTERVAL), ble::scan_window_t(SCAN_WINDOW), ACTIVE_SCANNING);
+        _ble.gap().setScanParameters(scan_params);
+        
+        // start scanning
+        _ble.gap().startScan();
     }
-    
-    /*
-        DEPRECATED WAY OF STARTING A SCAN
-     */
-    // TODO replace with new version
-    ble.gap().setScanParams(1800 /* scan interval */, 1500 /* scan window */, true /* active scanning */);
-    
-    // TODO replace with new version
-    ble.gap().startScan(advertisementCallback);
-}
- 
- /*
-    TODO comment
-  */
-void scheduleBleEventsProcessing(BLE::OnEventsToProcessCallbackContext* context) {
-    //BLE &ble = BLE::Instance();
-    _eventQueue.call(Callback<void()>(&context->ble, &BLE::processEvents));
+
+    void blink() {
+        _alive_led = !_alive_led;
+    }
+
+private:
+    /* Event handler */
+    void onAdvertisingReport(const ble::AdvertisingReportEvent &event) {
+        
+        ble::address_t address = event.getPeerAddress();
+
+        _pc_serial.printf("Received advertising data from address %02x:%02x:%02x:%02x:%02x:%02x.\r\n",
+            address[5], address[4], address[3], address[2], address[1], address[0]);
+    }
+
+private:
+    BLE &_ble;
+    events::EventQueue &_event_queue;
+    DigitalOut _alive_led;
+};
+
+/** Schedule processing of events from the BLE middleware in the event queue. */
+void schedule_ble_events(BLE::OnEventsToProcessCallbackContext *context) {
+    event_queue.call(Callback<void()>(&context->ble, &BLE::processEvents));
 }
 
 // Main method sets up peripherals, runs infinite loop
@@ -95,19 +98,15 @@ int main()
     // setup serial connection
     _pc_serial.baud(PC_SERIAL_BAUD);
 
-    // Print something over the serial connection
-    _pc_serial.printf("Serial link setup.\r\n");
+    // Setup scanner instance
+    BLE &ble = BLE::Instance();
+    ble.onEventsToProcess(schedule_ble_events);
 
-    // setup BLE object
-    _eventQueue.call_every(BLINKING_RATE_MS, periodicCallback);          // add LED blinking to the events queue
-    
-    BLE &ble = BLE::Instance();                             // instantiate the BLE object
-    ble.onEventsToProcess(scheduleBleEventsProcessing);
-    ble.init(bleInitComplete);
+    BLEScanner scanner(ble, event_queue);
 
     // Run
     _pc_serial.printf("Setup done. Running.\r\n");
-    _eventQueue.dispatch_forever();
+    scanner.start();
  
     return 0;
 }
