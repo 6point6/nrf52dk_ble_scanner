@@ -131,28 +131,8 @@ private:
         return 1;
     }
 
-    
-    // Called on receipt of an advertising report
-    void onAdvertisingReport(const ble::AdvertisingReportEvent &event) {
-        
-        // get the address and RSSI from the event
-        const ble::address_t address = event.getPeerAddress();
-        const ble::rssi_t rssi = event.getRssi();
 
-        _pc_serial.printf("Received advertising data from address %02x:%02x:%02x:%02x:%02x:%02x, RSSI: %ddBm\r\n",
-            address[5], address[4], address[3], address[2], address[1], address[0], rssi);
-        
-        // convert to chars
-        char address_string[Gap::ADDR_LEN] = {00};
-        get_address_as_char_array(address, address_string);
-
-        //_pc_serial.printf("Address string: %s\r\n", address_string);
-
-        // TODO unique the devices
-
-        // print advertising data
-        ble::AdvertisingDataParser adv_data(event.getPayload());
-
+    int print_adv_data(ble::AdvertisingDataParser adv_data) {
         // parse the advertising payload
         while (adv_data.hasNext()) {
             ble::AdvertisingDataParser::element_t field = adv_data.next();
@@ -202,9 +182,46 @@ private:
 
                 _pc_serial.printf("\r\n");
             }
+
+            // print service IDs
+            else if(field.type == ble::adv_data_type_t::INCOMPLETE_LIST_16BIT_SERVICE_IDS || field.type == ble::adv_data_type_t::INCOMPLETE_LIST_32BIT_SERVICE_IDS || field.type == ble::adv_data_type_t::INCOMPLETE_LIST_128BIT_SERVICE_IDS || field.type == ble::adv_data_type_t::COMPLETE_LIST_16BIT_SERVICE_IDS || field.type == ble::adv_data_type_t::COMPLETE_LIST_32BIT_SERVICE_IDS || field.type == ble::adv_data_type_t::COMPLETE_LIST_128BIT_SERVICE_IDS) {
+                _pc_serial.printf("SERVICE IDs: 0x");
+                
+                for(int i = 0; i < field.value.size(); i++) {
+                    _pc_serial.printf("%02x", field.value.data()[i]);
+                }
+
+                _pc_serial.printf("\r\n");
+            }
         }
 
         _pc_serial.printf("\r\n");
+
+        return 1;
+    }
+
+    
+    // Called on receipt of an advertising report
+    void onAdvertisingReport(const ble::AdvertisingReportEvent &event) {
+        
+        // get the address and RSSI from the event
+        const ble::address_t address = event.getPeerAddress();
+        const ble::rssi_t rssi = event.getRssi();
+
+        _pc_serial.printf("Received advertising data from address %02x:%02x:%02x:%02x:%02x:%02x, RSSI: %ddBm\r\n",
+            address[5], address[4], address[3], address[2], address[1], address[0], rssi);
+        
+        // convert to chars
+        char address_string[Gap::ADDR_LEN] = {00};
+        get_address_as_char_array(address, address_string);
+
+        //_pc_serial.printf("Address string: %s\r\n", address_string);
+
+        // TODO unique the devices
+
+        // print advertising data
+        ble::AdvertisingDataParser adv_data(event.getPayload());
+        print_adv_data(adv_data);
     }    
 }; /*  /Inner scanner class */
 
