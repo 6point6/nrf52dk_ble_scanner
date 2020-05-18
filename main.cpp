@@ -144,7 +144,7 @@ private:
                     _pc_serial.printf("COMPLETE_LOCAL_NAME: \"");
                 }
                 else {
-                    _pc_serial.printf("SHORTENED_LOCAL_NAME: ");
+                    _pc_serial.printf("SHORTENED_LOCAL_NAME: \"");
                 }                
 
                 for(int i = 0; i < field.value.size(); i++) {
@@ -154,7 +154,7 @@ private:
                 _pc_serial.printf("\"\r\n");
             }
 
-
+            // print MSD
             if(field.type == ble::adv_data_type_t::MANUFACTURER_SPECIFIC_DATA) {
                 _pc_serial.printf("MANUFACTURER_SPECIFIC_DATA: 0x");
 
