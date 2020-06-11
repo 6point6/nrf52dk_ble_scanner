@@ -1,4 +1,4 @@
-# Description
+# Overview
 An example C++ application for the Nordic NRF52 Development Kit, built and deployed with Mbed Studio. It listens for BLE advertising packets, and when received prints their details over the PC serial connection.
 
 Uses the OS5 version of all the Mbed libraries. **Caution: Many of the example projects found on the Mbed pages use previous versions**. The [up to date libraries are here](https://os.mbed.com/teams/mbed-os-examples).
@@ -7,6 +7,7 @@ Requires the board to be running the [ARM DapLink bootloader](https://armmbed.gi
 
 # Starting project
 I started with the [mbed-os-example-blinky project](https://os.mbed.com/teams/mbed-os-examples/code/mbed-os-example-blinky/), which is one of the example projects in Mbed Studio. Then copied [this main class](https://os.mbed.com/teams/mbed-os-examples/code/mbed-os-example-ble-EddystoneObserver//file/092c08942a29/source/main.cpp/).
+
 # Libraries
 * [Mbed nRF51822 library](https://os.mbed.com/teams/Nordic-Semiconductor/code/nRF51822/)
 * [BLE API library](https://os.mbed.com/teams/Bluetooth-Low-Energy/code/BLE_API/)
